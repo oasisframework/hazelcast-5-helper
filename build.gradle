@@ -1,0 +1,98 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+group = 'io.github.oasisframework'
+version = '1.0.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.hazelcast:hazelcast:5.3.6")
+    compileOnly('org.springframework.boot:spring-boot-autoconfigure:2.3.12.RELEASE')
+    implementation("io.github.oasisframework:hazelcast-common-helper:1.0.1")
+
+    implementation('org.projectlombok:lombok:1.18.24')
+    annotationProcessor('org.projectlombok:lombok:1.18.24')
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+publishing {
+    repositories {
+        maven {
+            def releaseRepo = "https://central.sonatype.com/repositories/"
+            def snapshotRepo = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+
+            url = isReleaseVersion ? releaseRepo : snapshotRepo
+
+            credentials {
+                username "INSERT_USER_NAME"
+                password "INSERT_PASSWORD"
+            }
+        }
+    }
+
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                groupId = 'io.github.oasisframework'
+                packaging ='jar'
+                name = 'Oasis Framework Hazelcast Common Helper'
+                description = 'Oasis Framework Hazelcast Common Helper'
+                url = 'https://github.com/oasisframework/hazelcast-common-helper'
+
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git://github.com/oasisframework/hazelcast-common-helper.git'
+                    developerConnection = 'scm:git:git@github.com:oasisframework/hazelcast-common-helper.git'
+                    url = 'https://github.com/oasisframework/hazelcast-common-helper'
+                }
+
+                developers {
+                    developer {
+                        id = 'oasisframework'
+                        name = 'Oasis Framework'
+                        email = 'oasisframework@gmail.com'
+                    }
+                }
+            }
+            from components.java
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}
+
+tasks.withType(Sign) {
+    onlyIf { isReleaseVersion }
+}
