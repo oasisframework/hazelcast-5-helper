@@ -5,20 +5,14 @@ import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ClientConnectionStrategyConfig;
 import com.hazelcast.client.config.ClientNetworkConfig;
 import com.hazelcast.client.config.ConnectionRetryConfig;
+import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.LifecycleEvent;
-import io.github.oasisframework.hazelcast.common.configuration.HazelcastAbstractConfiguration;
 import io.github.oasisframework.hazelcast.common.properties.HazelcastConnectionAbstractProperties;
-import io.github.oasisframework.hazelcast.five.helper.properties.HazelcastStatusProperties;
-import io.github.oasisframework.hazelcast.five.helper.properties.HzHealthChecker;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@Slf4j
 public class HazelcastConnection {
 
     public static final String HAZELCAST_INSTANCE = "hazelcastInstance";
@@ -28,20 +22,17 @@ public class HazelcastConnection {
     private static final String INVOCATION_TIMEOUT_VALUE = "1";
     private static final int ZERO_TIMEOUT_VALUE = 0;
 
-    private final HazelcastStatusProperties hazelcastStatusProperties;
     private final HazelcastConnectionAbstractProperties hazelcastConnectionProperties;
+    private final SerializerConfig customConfig;
 
-    @Autowired
-    public HazelcastConnection(HazelcastStatusProperties hazelcastStatusProperties, HazelcastConnectionAbstractProperties hazelcastConnectionProperties) {
-        this.hazelcastStatusProperties = hazelcastStatusProperties;
+    public HazelcastConnection(HazelcastConnectionAbstractProperties hazelcastConnectionProperties, SerializerConfig customConfig) {
         this.hazelcastConnectionProperties = hazelcastConnectionProperties;
+        this.customConfig = customConfig;
     }
 
     @Bean(HAZELCAST_INSTANCE)
     public HazelcastInstance hazelCastClient() {
-        HazelcastInstance hz = HazelcastClient.newHazelcastClient(createClientConfig());
-        hz.getLifecycleService().addLifecycleListener(this::getHealthCheckListener);
-        return hz;
+		return HazelcastClient.newHazelcastClient(createClientConfig());
     }
 
     private ClientConfig createClientConfig() {
@@ -54,7 +45,7 @@ public class HazelcastConnection {
 
         config.setNetworkConfig(createClientNetworkConfig());
         config.setConnectionStrategyConfig(createClientConnectionStrategyConfig(config));
-       // config.getSerializationConfig().addSerializerConfig(createProtocolBufferSerializer());
+        config.getSerializationConfig().addSerializerConfig(customConfig);
 
         config.setProperty(MONITORING_LEVEL_KEY, MONITORING_LEVEL_VALUE);
         config.setProperty(INVOCATION_TIMEOUT_KEY, INVOCATION_TIMEOUT_VALUE);
@@ -85,25 +76,11 @@ public class HazelcastConnection {
 
     private ConnectionRetryConfig handleConnectionRetryConfig(ConnectionRetryConfig connectionRetryConfig) {
         if (hazelcastConnectionProperties.getConnectTimeoutAsMilliSeconds() == null || hazelcastConnectionProperties.getConnectTimeoutAsMilliSeconds() < ZERO_TIMEOUT_VALUE) {
-            // equivalent of connection attempt limit is zero
             connectionRetryConfig.setClusterConnectTimeoutMillis(ConnectionRetryConfig.DEFAULT_CLUSTER_CONNECT_TIMEOUT_MILLIS);
         } else {
             connectionRetryConfig.setClusterConnectTimeoutMillis(hazelcastConnectionProperties.getConnectTimeoutAsMilliSeconds());
         }
         return connectionRetryConfig;
     }
-/*
-    private SerializerConfig createProtocolBufferSerializer() {
-        return new SerializerConfig().setImplementation(new HzProtobufferSerializer()).setTypeClass(GeneratedMessageV3.class);
-    }
-*/
-    private void getHealthCheckListener(LifecycleEvent event) {
-        if (hazelcastStatusProperties.containsErrorStatus(event)) {
-            HzHealthChecker.isAlive = false;
-            log.error("HAZELCAST CONNECTION REFUSED >> {}", event.getState());
-        } else {
-            HzHealthChecker.isAlive = true;
-            log.info("HAZELCAST CONNECTION SUCCESSFUL >> {}", event.getState());
-        }
-    }
+
 }
