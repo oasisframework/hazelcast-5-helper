@@ -67,6 +67,7 @@ public class HazelcastConnection {
 		config.setProperty(MONITORING_LEVEL_KEY, MONITORING_LEVEL_VALUE);
 		config.setProperty(INVOCATION_TIMEOUT_KEY, INVOCATION_TIMEOUT_VALUE);
 		config.setClusterName(hazelcastConnectionProperties.getConnectionName());
+		config.setInstanceName(hazelcastConnectionProperties.getInstanceName());
 
 		return config;
 	}
